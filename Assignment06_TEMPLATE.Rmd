@@ -5,6 +5,262 @@ date: "2024-09-25"
 output: html_document # you can change to other output format if you want
 ---
 
-# 1. Exploratory data analysis
+```{r}
+library(tidyverse)
+```
+
+# 1. The Gaussian distribution
+
+#1(Q1)
+```{r}
+library(ggplot2)
+
+x <- seq(-4, 6, length.out = 100)
+
+y1 <- dnorm(x, mean = 1, sd = sqrt(1))
+y2 <- dnorm(x, mean = 1, sd = sqrt(2))
+y3 <- dnorm(x, mean = 1, sd = sqrt(3))
+
+data <- data.frame(
+  x = rep(x, 3),
+  Density = c(y1, y2, y3),
+  Variance = factor(rep(c(1, 2, 3), each = 100))
+)
+
+ggplot(data, aes(x = x, y = Density, color = Variance)) +
+  geom_line() +
+  labs(x = "x", y = "Density")
+```
+
+#1(Q2)
+```{r}
+y1_cdf <- pnorm(x, mean = 1, sd = sqrt(1))
+y2_cdf <- pnorm(x, mean = 1, sd = sqrt(2))
+y3_cdf <- pnorm(x, mean = 1, sd = sqrt(3))
+
+data_cdf <- data.frame(
+  x = rep(x, 3),
+  CumulativeDensity = c(y1_cdf, y2_cdf, y3_cdf),
+  Variance = factor(rep(c(1, 2, 3), each = 100))
+)
+
+ggplot(data_cdf, aes(x = x, y = CumulativeDensity, color = Variance)) +
+  geom_line() +
+  labs(x = "x", y = "Cumulative Density")
+```
+
+#1(Q3)
+```{r}
+p <- seq(0, 1, length.out = 100)
+
+y1_quantile <- qnorm(p, mean = 1, sd = sqrt(1))
+y2_quantile <- qnorm(p, mean = 1, sd = sqrt(2))
+y3_quantile <- qnorm(p, mean = 1, sd = sqrt(3))
+
+data_quantile <- data.frame(
+  Probability = rep(p, 3),
+  Quantile = c(y1_quantile, y2_quantile, y3_quantile),
+  Variance = factor(rep(c(1, 2, 3), each = 100))
+)
+
+ggplot(data_quantile, aes(x = Probability, y = Quantile, color = Variance)) +
+  geom_line() +
+  labs(x = "Probability", y = "Quantile")
+```
+
+#1(Q4)
+```{r}
+set.seed(1)
+
+standardGaussianSample <- rnorm(100, mean = 0, sd = 1)
+```
+
+#1(Q5)
+```{r}
+alpha <- sqrt(3)
+beta <- 1
+
+mean1Var3GaussianSampleA <- alpha * standardGaussianSample + beta
+```
+
+#1(Q6)
+```{r}
+set.seed(1)
+
+mean1Var3GaussianSampleB <- rnorm(100, mean = 1, sd = sqrt(3))
+
+identical(mean1Var3GaussianSampleA, mean1Var3GaussianSampleB)
+```
+
+#1(Q7)
+```{r}
+x <- seq(-4, 6, length.out = 100)
+population_density <- dnorm(x, mean = 1, sd = sqrt(3))
+
+data_sample <- data.frame(x = mean1Var3GaussianSampleA)  
+data_population <- data.frame(x = x, Density = population_density)  
+
+
+ggplot() +
+  geom_line(data = data_population, aes(x = x, y = Density), color = "red") +
+  geom_density(data = data_sample, aes(x = x), color = "blue", linetype = "dashed") +
+  geom_vline(xintercept = 1, color = "green") +
+  geom_vline(xintercept = mean(mean1Var3GaussianSampleA), color = "blue", linetype = "dashed") +
+  labs(x = "x", y = "Density")
+```
+
+#1(Q8)
+E(W) = E(αZ+β) = αE(Z)+β = β
+Var(W) = Var(αZ) = α^2Var(Z) = α^2
+
+
+#2(Q1)
+```{r}
+set.seed(0)
+num_trials_per_sample_size <- 1000
+min_sample_size <- 30
+max_sample_size <- 500
+sample_size_inc <- 5
+mu_0 <- 1
+sigma_0 <- 3
+
+simulation_df <- crossing(trial = seq(num_trials_per_sample_size), 
+                          sample_size = seq(min_sample_size, max_sample_size, sample_size_inc)) %>%
+  mutate(simulation = pmap(.l = list(trial, sample_size), 
+                           .f = ~rnorm(.y, mean = mu_0, sd = sigma_0))) %>%
+  mutate(sample_md = map_dbl(.x = simulation, .f = median),
+         sample_mn = map_dbl(.x = simulation, .f = mean)) %>%
+  group_by(sample_size) %>%
+  summarise(msq_error_md = mean((sample_md - mu_0)^2),
+            msq_error_mn = mean((sample_mn - mu_0)^2))
+
+
+ggplot(simulation_df, aes(x = sample_size)) +
+  geom_smooth(aes(y = msq_error_md, color = "Median"),linetype = "dashed") +
+  geom_smooth(aes(y = msq_error_mn, color = "Mean")) +
+  labs(x = "Sample size", y = "Mean square error") +
+  scale_color_manual(name = "Estimator", values = c("Median" = "blue", "Mean" = "red"))
+```
+
+
+# 4. Maximum likelihood estimates
+```{r}
+library(Stat2Data)
+data("Hawks")
 
 ```
+
+#4.1(Q1)
+```{r}
+RedTailedDf <- Hawks %>%
+  filter(Species == "RT") %>%
+  select(Weight,Tail,Wing)
+
+dim(RedTailedDf)
+
+head(RedTailedDf, 5)
+```
+
+#4.1(Q2)
+```{r}
+tail_lengths <- RedTailedDf$Tail
+
+mu_hat_MLE <- mean(tail_lengths)
+sigma_hat_MLE_squared <- mean((tail_lengths - mu_hat_MLE)^2)
+
+mu_hat_MLE
+sigma_hat_MLE_squared
+```
+
+#4.1(Q3)
+```{r}
+kernel_density <- density(tail_lengths)
+
+plot_data <- data.frame(
+  Length = kernel_density$x,
+  KernelDensity = kernel_density$y,
+  MLEDensity = dnorm(kernel_density$x, mean = mu_hat_MLE, sd = sqrt(sigma_hat_MLE_squared))
+)
+
+ggplot(plot_data, aes(x = Length)) +
+  geom_line(aes(y = KernelDensity, color = "Kernel density")) +
+  geom_line(aes(y = MLEDensity, color = "MLE density")) +
+  labs(x = "Length", y = "Tail length (mm)", color = "Density") +
+  scale_color_manual(values = c("Kernel density" = "blue", "MLE density" = "red"))
+```
+
+#4.2(Q1)
+```{r}
+set.seed(2)
+
+num_trials <- 1000
+sample_sizes <- seq(5, 100, by = 5)
+mu_0 <- 1
+sigma_0 <- 3
+
+V_MLE <- function(sample_X) {
+  mean((sample_X - mean(sample_X))^2)
+}
+
+V_U <- function(sample_X) {
+  sum((sample_X - mean(sample_X))^2) / (length(sample_X) - 1)
+}
+
+simulation_results <- lapply(sample_sizes, function(n) {
+  sample_data <- replicate(num_trials, rnorm(n, mean = mu_0, sd = sigma_0), simplify = FALSE)
+  
+  mle_estimates <- sapply(sample_data, V_MLE)
+  unbiased_estimates <- sapply(sample_data, V_U)
+  
+  bias_mle <- mean(mle_estimates) - sigma_0^2
+  bias_unbiased <- mean(unbiased_estimates) - sigma_0^2
+  
+  data.frame(SampleSize = n, MLE_Bias = bias_mle, Unbiased_Bias = bias_unbiased)
+})
+
+bias_df <- do.call(rbind, simulation_results)
+
+
+plot_data <- pivot_longer(bias_df, cols = c(MLE_Bias, Unbiased_Bias),
+                          names_to = "Estimator", values_to = "Bias") %>%
+  mutate(Estimator = recode(Estimator, MLE_Bias = "MLE Bias", Unbiased_Bias = "Unbiased Bias"))
+
+ggplot(plot_data, aes(x = SampleSize, y = Bias, color = Estimator, linetype = Estimator)) +
+  geom_line() +
+  labs(x = "Sample Size", y = "Bias") +
+  theme(legend.position = "right")
+```
+
+#4.2(Q2)
+```{r}
+set.seed(2)
+
+num_trials <- 1000
+sample_sizes <- seq(5, 100, by = 5)
+mu_0 <- 1
+sigma_0 <- 3
+
+sqrt_V_U <- function(sample_X) {
+  sqrt(sum((sample_X - mean(sample_X))^2) / (length(sample_X) - 1))
+}
+
+
+simulation_results <- lapply(sample_sizes, function(n) {
+  sample_data <- replicate(num_trials, rnorm(n, mean = mu_0, sd = sigma_0), simplify = FALSE)
+  
+  sqrt_unbiased_estimates <- sapply(sample_data, sqrt_V_U)
+
+  bias_sqrt_unbiased <- mean(sqrt_unbiased_estimates) - sigma_0
+
+  data.frame(SampleSize = n, Bias_Sqrt_Unbiased = bias_sqrt_unbiased)
+})
+
+bias_df <- do.call(rbind, simulation_results)
+
+library(ggplot2)
+ggplot(bias_df, aes(x = SampleSize, y = Bias_Sqrt_Unbiased)) +
+  geom_line() +
+  labs(x = "Sample Size", y = "Bias of sqrt(V_U)")
+```
+
+#4.2(Q3)
