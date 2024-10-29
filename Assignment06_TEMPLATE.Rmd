@@ -1,0 +1,10 @@
+---
+title: "Assignment 5"
+author: "Zhihao Yang"
+date: "2024-09-25"
+output: html_document # you can change to other output format if you want
+---
+
+# 1. Exploratory data analysis
+
+```
